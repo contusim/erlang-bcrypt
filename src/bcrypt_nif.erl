@@ -32,18 +32,20 @@
 %% @end
 %%--------------------------------------------------------------------
 init() ->
-    Dir = case code:priv_dir(bcrypt) of
-              {error, bad_name} ->
-                  case code:which(bcrypt) of
-                      Filename when is_list(Filename) ->
-                          filename:join(
-                            [filename:dirname(Filename), "../priv"]);
-                      _ ->
-                          "../priv"
-                  end;
-              Priv -> Priv
-          end,
-    erlang:load_nif(filename:join(Dir, "bcrypt_nif"), 0).
+    load_nif(get_so_path()).
+load_nif(LibDir) ->
+    SOPath = filename:join(LibDir, "bcrypt_drv"),
+    case catch erlang:load_nif(SOPath, 0) of
+        ok ->
+            ok;
+        Err ->
+            error_logger:warning_msg("unable to load bcrypt_drv NIF: ~p~n", [Err]),
+            Err
+    end.    
+get_so_path() ->
+    EbinDir = filename:dirname(code:which(?MODULE)),
+    AppDir = filename:dirname(EbinDir),
+    filename:join([AppDir, "priv", "lib"]).
 
 %%--------------------------------------------------------------------
 %% @doc Generate a random text salt for use with hashpw/3. LogRounds
